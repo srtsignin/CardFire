@@ -1,0 +1,26 @@
+{
+  "name": "cardfire",
+  "version": "1.0.0",
+  "description": "Our authentication service which uses a card scanner",
+  "main": "cardFire.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srtsignin/CardFire.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/srtsignin/CardFire/issues"
+  },
+  "homepage": "https://github.com/srtsignin/CardFire#readme",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "fs": "0.0.1-security",
+    "redis": "^2.8.0",
+    "rosefire-node": "git+https://ada.csse.rose-hulman.edu/rosefire/node-sdk.git#2.1.0"
+  }
+}
