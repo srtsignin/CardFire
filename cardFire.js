@@ -4,6 +4,9 @@ const RosefireTokenVerifier = require('rosefire-node')
 const redis = require('redis')
 const fs = require('fs')
 
+const USER_TO_CARD = 'UserToCard'
+const CARD_TO_USER = 'CardToUser'
+
 const secrets = JSON.parse(fs.readFileSync('secrets.properties'))
 
 const rosefire = new RosefireTokenVerifier(secrets.roseFireSecret);
@@ -29,25 +32,48 @@ app.post('/token', jsonParser, (req, res) => {
     let cardNumber = req.body.cardNumber
     let roseFireToken = req.get('RoseFireToken')
     if (roseFireToken) {
-        validateRoseFireToken(roseFireToken, res)
+        try {
+            let username = validateRoseFireToken(roseFireToken, cardNumber, removeOldCard)
+            addNewCard(username, cardNumber)
+        } catch (err) {
+            // TODO: Handle different error types
+            res.status(401).json({
+                error: 'Not authorized'
+            })
+            return
+        }
     }
+    res.status(200).json({
+        'success': true
+    })
 })
 
-function validateRoseFireToken (roseFireToken, res) {
+function validateRoseFireToken (roseFireToken, cardNumber, callback) {
     rosefire.verify(roseFireToken, function(err, authData) {
         if (err) {
-          res.status(401).json({
-            error: 'Not authorized!'
-          })
+          throw err
         } else {
-          console.log(authData.username)
-          console.log(authData.issued_at) 
-          console.log(authData.group)
-          console.log(authData.expires)
-          res.json(authData);
+          callback(cardNumber, authData.username, addNewCard)
         }
-      })
-      
+    })
+}
+
+function removeOldCard (cardNumber, username, callback) {
+    client.hmget(USER_TO_CARD, username, (err, found) => {
+        if (found) {
+            client.hdel(CARD_TO_USER, found)
+        }
+        callback(cardNumber, username, () => {
+            console.log('Made it, make func here')
+            return
+        })
+    })
+}
+
+function addNewCard (cardNumber, username, callback) {
+    client.hmset(USER_TO_CARD, username, cardNumber, (err) => {
+        client.hmset(CARD_TO_USER, cardNumber, username, callback)
+    })
 }
 
 app.listen(port, () => console.log(`CardFire service listening on port ${port}!`))
