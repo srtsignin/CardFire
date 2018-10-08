@@ -10,7 +10,7 @@ const CARD_TO_USER = 'CardToUser'
 
 const secrets = JSON.parse(fs.readFileSync('secrets.properties'))
 
-const rosefire = new RosefireTokenVerifier(secrets.roseFireSecret);
+const rosefire = new RosefireTokenVerifier(secrets.rosefireSecret);
 
 const redisHost = secrets.redis.host
 const redisPort = secrets.redis.port
@@ -44,7 +44,7 @@ app.post('/token', jsonParser, (req, res) => {
 
     if (rosefireToken && cardNumber) {
         async.waterfall([
-            validateRoseFireToken(rosefireToken, cardNumber),
+            validateRosefireToken(rosefireToken, cardNumber),
             removeOldCard,
             addNewCard,
         ], function(err, result) {
@@ -69,9 +69,9 @@ app.post('/token', jsonParser, (req, res) => {
     }
 })
 
-function validateRoseFireToken(roseFireToken, cardNumber, callback) {
+function validateRosefireToken(rosefireToken, cardNumber, callback) {
     return function(callback) {
-        rosefire.verify(roseFireToken, function(err, authData) {
+        rosefire.verify(rosefireToken, function(err, authData) {
             if (err) {
                 throw err
             }
