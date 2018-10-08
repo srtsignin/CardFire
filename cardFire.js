@@ -52,12 +52,20 @@ app.post('/token', jsonParser, (req, res) => {
             if (err) {
                 res.status(401).json({ error: 'Not authorized' })
             } else {
-                res.status(200).json({ 'success': true })
+                res.status(200).json({
+                    'success': true,
+                    'message': 'Added card number ' + cardNumber + ' to database'
+                })
             }
             return
         })
     } else {
-        res.status(400).json({ 'message': 'You must include a RosefireToken header and cardNumber in the body' })
+        res.status(400).json({
+            'success': false,
+            'message': 'You must include a RosefireToken in the header, ' +
+                'specify the ContentType to be application/json, ' +
+                'and provide cardNumber in the body'
+        })
     }
 })
 
