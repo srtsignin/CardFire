@@ -2,10 +2,7 @@ FROM node:8.12.0-alpine
 
 WORKDIR /runner
 
-ADD package*.json /runner/
-RUN npm install
-
-ADD cardFire.js /runner
+COPY . .
 
 EXPOSE 3001
 
