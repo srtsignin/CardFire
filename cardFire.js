@@ -9,7 +9,7 @@ const USER_TO_CARD = 'UserToCard'
 const CARD_TO_USER = 'CardToUser'
 const USER_TO_NAME = 'UserToName'
 
-const secrets = JSON.parse(fs.readFileSync('res/secrets.properties'))
+const secrets = JSON.parse(fs.readFileSync('res/secrets-cf.properties'))
 
 const rosefire = new RosefireTokenVerifier(secrets.rosefireSecret);
 
