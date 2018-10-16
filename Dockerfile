@@ -6,3 +6,6 @@ COPY . .
 
 EXPOSE 3001
 
+RUN ls
+
+CMD node cardfire.js
