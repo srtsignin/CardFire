@@ -8,7 +8,6 @@ const fs = require('fs')
 const USER_TO_CARD = 'UserToCard'
 const CARD_TO_USER = 'CardToUser'
 const USER_TO_NAME = 'UserToName'
-const TOKEN_TO_CARD = 'TokenToCard'
 
 const secrets = JSON.parse(fs.readFileSync('secrets.properties'))
 
@@ -84,7 +83,7 @@ function createNewCardLink(rosefireToken, cardNumber, res) {
 
 function createToken(cardNumber) {
     let token = generateToken(cardNumber)
-    client.hmset(TOKEN_TO_CARD, token, cardNumber)
+    client.setex(token, 3600 * 24, cardNumber)
     return token
 }
 
@@ -153,25 +152,33 @@ app.get('/verify', (req, res) => {
 })
 
 function verifyCardfireToken(cardfireToken, res) {
-    client.hmget(TOKEN_TO_CARD, cardfireToken, (err, cardNumberList) => {
-        if (!cardNumberList[0]) {
+    client.get(cardfireToken, (err, cardNumber) => {
+        if (!cardNumber) {
             res.status(401).json({
                 'success': false,
                 'message': 'Not a valid CardfireToken'
             })
             return
         } else {
-            client.hmget(CARD_TO_USER, cardNumberList[0], (err, userList) => {
-                client.hmget(USER_TO_NAME, userList[0], (err, nameList) => {
-                    res.status(200).json({
-                        'success': true,
-                        'user': {
-                            'username': userList[0],
-                            'name': nameList[0]
-                        }
+            client.hmget(CARD_TO_USER, cardNumber, (err, userList) => {
+                if (!userList[0]) {
+                    res.status(401).json({
+                        'success': false,
+                        'message': 'Not a valid CardfireToken'
                     })
                     return
-                })
+                } else {
+                    client.hmget(USER_TO_NAME, userList[0], (err, nameList) => {
+                        res.status(200).json({
+                            'success': true,
+                            'user': {
+                                'username': userList[0],
+                                'name': nameList[0]
+                            }
+                        })
+                        return
+                    })
+                }
             })
         }
     })

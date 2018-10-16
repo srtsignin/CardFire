@@ -7,6 +7,6 @@ RUN npm install
 
 ADD cardFire.js /runner
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD node active_user_service.js
