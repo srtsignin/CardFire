@@ -1,6 +1,6 @@
 FROM node:8.12.0-alpine
 
-WORKDIR /runner
+WORKDIR /
 
 COPY . .
 
