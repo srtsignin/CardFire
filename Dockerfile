@@ -6,4 +6,4 @@ COPY . .
 
 EXPOSE 3001
 
-CMD node active_user_service.js
+CMD node cardfire.js

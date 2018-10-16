@@ -61,4 +61,4 @@ typings/
 .next
 
 # Extra
-secrets.properties
+secrets-cf.properties
