@@ -7,6 +7,8 @@ const fs = require('fs')
 
 const USER_TO_CARD = 'UserToCard'
 const CARD_TO_USER = 'CardToUser'
+const USER_TO_NAME = 'UserToName'
+const TOKEN_TO_CARD = 'TokenToCard'
 
 const secrets = JSON.parse(fs.readFileSync('secrets.properties'))
 
@@ -43,22 +45,11 @@ app.post('/token', jsonParser, (req, res) => {
     let rosefireToken = req.get('RosefireToken')
 
     if (rosefireToken && cardNumber) {
-        async.waterfall([
-            validateRosefireToken(rosefireToken, cardNumber),
-            removeOldCard,
-            addNewCard,
-        ], function(err, result) {
-            console.error(err)
-            if (err) {
-                res.status(401).json({ error: 'Not authorized' })
-            } else {
-                res.status(200).json({
-                    'success': true,
-                    'message': 'Added card number ' + cardNumber + ' to database'
-                })
-            }
-            return
-        })
+        createNewCardLink(rosefireToken, cardNumber, res)
+        return
+    } else if (cardNumber) {
+        checkCard(cardNumber, res)
+        return
     } else {
         res.status(400).json({
             'success': false,
@@ -69,32 +60,121 @@ app.post('/token', jsonParser, (req, res) => {
     }
 })
 
+function createNewCardLink(rosefireToken, cardNumber, res) {
+    async.waterfall([
+        validateRosefireToken(rosefireToken, cardNumber),
+        removeOldCard,
+        addNewCard,
+    ], function(err, result) {
+        console.error(err)
+        if (err) {
+            res.status(401).json({
+                'success': false,
+                'message': 'Unable to authorize'
+            })
+        } else {
+            res.status(200).json({
+                'success': true,
+                'token': createToken(cardNumber)
+            })
+        }
+        return
+    })
+}
+
+function createToken(cardNumber) {
+    let token = generateToken(cardNumber)
+    client.hmset(TOKEN_TO_CARD, token, cardNumber)
+    return token
+}
+
+function generateToken(cardNumber) {
+    return cardNumber
+}
+
+function checkCard(cardNumber, res) {
+    client.hmget(CARD_TO_USER, cardNumber, (err, found) => {
+        if (found[0]) {
+            res.status(200).json({
+                'success': true,
+                'token': createToken(cardNumber)
+            })
+            return
+        } else {
+            res.status(401).json({
+                'success': false,
+                'message': 'This is not a registered card. Please register this card'
+            })
+            return
+        }
+    })
+}
+
 function validateRosefireToken(rosefireToken, cardNumber, callback) {
     return function(callback) {
         rosefire.verify(rosefireToken, function(err, authData) {
             if (err) {
                 throw err
             }
-            callback(null, cardNumber, authData.username)
+            callback(null, cardNumber, authData)
         })
     }
 }
 
-function removeOldCard(cardNumber, username, callback) {
-    client.hmget(USER_TO_CARD, username, (err, found) => {
+function removeOldCard(cardNumber, authData, callback) {
+    client.hmget(USER_TO_CARD, authData.username, (err, found) => {
         if (found) {
             client.hdel(CARD_TO_USER, found)
         }
-        callback(null, cardNumber, username)
+        callback(null, cardNumber, authData)
     })
 }
 
-function addNewCard(cardNumber, username, callback) {
-    console.log(cardNumber)
-    console.log(username)
-    client.hmset(USER_TO_CARD, username, cardNumber, (err) => {
-        client.hmset(CARD_TO_USER, cardNumber, username, callback)
+function addNewCard(cardNumber, authData, callback) {
+    client.hmset(USER_TO_CARD, authData.username, cardNumber, (err) => {
+        client.hmset(CARD_TO_USER, cardNumber, authData.username, (err) => {
+            client.hmset(USER_TO_NAME, authData.username, authData.name, callback)
+        })
     })
 }
 
-app.listen(port, () => console.log(`CardFire service listening on port ${port}!`))
+app.get('/verify', (req, res) => {
+    let cardfireToken = req.get('CardfireToken')
+    if (!cardfireToken) {
+        res.status(400).json({
+            'success': true,
+            'message': 'No CardfireToken header present'
+        })
+        return
+    } else {
+        verifyCardfireToken(cardfireToken, res)
+        return
+    }
+})
+
+function verifyCardfireToken(cardfireToken, res) {
+    client.hmget(TOKEN_TO_CARD, cardfireToken, (err, cardNumberList) => {
+        if (!cardNumberList[0]) {
+            res.status(401).json({
+                'success': false,
+                'message': 'Not a valid CardfireToken'
+            })
+            return
+        } else {
+            client.hmget(CARD_TO_USER, cardNumberList[0], (err, userList) => {
+                client.hmget(USER_TO_NAME, userList[0], (err, nameList) => {
+                    res.status(200).json({
+                        'success': true,
+                        'user': {
+                            'username': userList[0],
+                            'name': nameList[0]
+                        }
+                    })
+                    return
+                })
+            })
+        }
+    })
+}
+
+app.listen(port, () => console.log(`Cardfire service listening on port ${port}!`))
